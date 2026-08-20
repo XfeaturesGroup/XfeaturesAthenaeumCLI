@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "bin": {
-    "athenaeum": "./dist/cli.js"
+    "athenaeum": "dist/cli.js"
   },
   "files": [
     "LICENSE",
