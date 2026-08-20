@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { AthenaeumApiError, AthenaeumClient } from "@xfeatures/athenaeum-sdk";
+import { AthenaeumApiError, AthenaeumClient } from "@xfeaturesgroup/athenaeum";
 import { parseFlags } from "./args.js";
 import { loadConfig } from "./config.js";
 import { clearCredentials, credentialsPath, loadCredentials, saveCredentials } from "./credentials.js";

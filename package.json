@@ -1,9 +1,8 @@
 {
-  "name": "@xfeatures/athenaeum-cli",
+  "name": "@xfeaturesgroup/athenaeum-cli",
   "version": "0.2.0",
-  "description": "Personal command-line access to Xfeatures Athenaeum: sign in with your own Xfeatures Account, then search/read/propose from the terminal.",
+  "description": "Command-line client for Xfeatures Athenaeum: sign in with your Xfeatures Account over OAuth 2.0 PKCE, then search and read from the terminal.",
   "license": "SEE LICENSE IN LICENSE",
-  "private": true,
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -20,24 +19,26 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/*.test.js",
-    "sync:sdk": "node scripts/sync-sdk.mjs"
+    "test": "node --test dist/*.test.js"
   },
   "dependencies": {
-    "@xfeatures/athenaeum-sdk": "file:vendor/athenaeum-sdk"
+    "@xfeaturesgroup/athenaeum": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "typescript": "^5.9.3"
   },
   "keywords": [
-    "athenaeum",
     "xfeatures",
+    "athenaeum",
     "cli",
-    "oauth",
+    "oauth2",
     "pkce",
     "knowledge-base",
-    "retrieval"
+    "retrieval",
+    "ai-agents",
+    "command-line",
+    "typescript"
   ],
   "repository": {
     "type": "git",
@@ -46,5 +47,9 @@
   "homepage": "https://github.com/XfeaturesGroup/XfeaturesAthenaeumCLI#readme",
   "bugs": {
     "url": "https://github.com/XfeaturesGroup/XfeaturesAthenaeumCLI/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

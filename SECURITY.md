@@ -35,9 +35,10 @@ credential-handling surface is what matters:
   not authenticate it (RFC 6749 §2.2). This is a public client and holds no
   secret by design.
 
-## The vendored SDK
+## The SDK dependency
 
-`vendor/` holds build output from
-[XfeaturesAthenaeumSDK](https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK),
-with its source commit recorded in `vendor/PROVENANCE.json`. A problem in that
-code belongs in the SDK repository; fixing it here would fork it.
+This CLI depends on
+[`@xfeaturesgroup/athenaeum`](https://www.npmjs.com/package/@xfeaturesgroup/athenaeum)
+as an ordinary npm package. A problem in that code belongs in the
+[SDK repository](https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK), not
+here -- fixing it in this repository would mean forking it.

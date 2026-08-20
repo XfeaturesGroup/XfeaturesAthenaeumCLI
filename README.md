@@ -3,14 +3,14 @@
 **Search your organisation's knowledge from the terminal.**
 
 [![CI](https://github.com/XfeaturesGroup/XfeaturesAthenaeumCLI/actions/workflows/ci.yml/badge.svg)](https://github.com/XfeaturesGroup/XfeaturesAthenaeumCLI/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@xfeaturesgroup/athenaeum-cli)](https://www.npmjs.com/package/@xfeaturesgroup/athenaeum-cli)
 [![OAuth 2.0](https://img.shields.io/badge/OAuth_2.0-PKCE_S256-2F6FEB)](#how-sign-in-works)
 [![Public client](https://img.shields.io/badge/client_secret-none-brightgreen)](#there-is-no-client_secret-on-purpose)
 [![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey)](LICENSE)
 
 ```bash
 # 1. Install
-git clone https://github.com/XfeaturesGroup/XfeaturesAthenaeumCLI.git
-cd XfeaturesAthenaeumCLI && npm install && npm run build && npm link
+npm install -g @xfeaturesgroup/athenaeum-cli
 
 # 2. Sign in — opens your browser, no secret to configure
 athenaeum login
@@ -140,25 +140,13 @@ does not authenticate it.
   endpoint yet, so it reports expiry and makes one cheap call to confirm the
   token is currently accepted.
 
-## The vendored SDK
+## Built on the SDK
 
-This CLI is built on
-[`@xfeatures/athenaeum-sdk`](https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK).
-npm publishing is deliberately disabled and the SDK is a separate private
-repository, so there is no registry to install it from — and a git dependency
-would make every CI run a cross-repository credential problem.
-
-`vendor/` therefore holds the SDK's **build output**, with the commit it came
-from recorded in [`vendor/PROVENANCE.json`](vendor/PROVENANCE.json). No source
-is duplicated and no authorization logic is copied: the SDK is a thin HTTP
-client, and every access decision is made server-side by Athenaeum. To refresh
-it against a local SDK checkout:
-
-```bash
-npm run sync:sdk            # or: npm run sync:sdk ../path/to/XfeaturesAthenaeumSDK
-```
-
-Never hand-edit anything under `vendor/`.
+This CLI is a thin wrapper around
+[`@xfeaturesgroup/athenaeum`](https://www.npmjs.com/package/@xfeaturesgroup/athenaeum),
+installed as an ordinary npm dependency -- no vendoring, no monorepo state to
+carry along. Every command maps to one SDK method; the CLI's own code is
+argument parsing, credential storage, and the PKCE login flow.
 
 ## Related repositories
 

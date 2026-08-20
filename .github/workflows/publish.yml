@@ -1,0 +1,115 @@
+name: Publish to npm
+
+# Deliberately not on every push to main. Publishing is a release action, not
+# a side effect of merging -- it runs only when a v0.x.y tag is pushed, so a
+# publish always corresponds to an intentional, named release.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing v0.x.y tag to publish (workflow_dispatch is for re-running after a fixed failure, never for skipping the tag requirement)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Every release gate, before anything is published
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install
+
+      - name: Typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Package-content verification
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+            if (pkg.private === true) throw new Error('package.json marks this private.');
+            if (pkg.publishConfig?.access !== 'public') throw new Error('publishConfig.access must be public.');
+            if (!pkg.repository?.url?.includes('XfeaturesAthenaeumCLI')) throw new Error('repository.url must match this repository for Trusted Publishing to verify.');
+            if (!pkg.license || !pkg.version) throw new Error('license or version missing.');
+            console.log('package.json: ' + pkg.name + '@' + pkg.version + ', ok');
+          "
+          test -f LICENSE || { echo "LICENSE missing"; exit 1; }
+          test -f README.md || { echo "README.md missing"; exit 1; }
+
+      - name: npm pack inspection
+        run: |
+          npm pack --silent
+          tarball=$(ls xfeaturesgroup-athenaeum-cli-*.tgz)
+          list=$(tar -tzf "$tarball")
+          echo "$list"
+          if echo "$list" | grep -qE '\.test\.|package/src/|\.env'; then
+            echo "Tarball contains source, tests, or an env file."
+            exit 1
+          fi
+          for required in LICENSE README.md package.json dist/cli.js; do
+            echo "$list" | grep -q "package/$required" || { echo "Missing $required."; exit 1; }
+          done
+          echo "Tarball verified clean."
+
+      - name: Version matches the pushed tag
+        if: github.event_name == 'push'
+        run: |
+          pkg_version=$(node -p "require('./package.json').version")
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$pkg_version" != "$tag_version" ]; then
+            echo "package.json version ($pkg_version) does not match tag $GITHUB_REF_NAME."
+            exit 1
+          fi
+
+  publish:
+    name: Publish (npm Trusted Publishing)
+    needs: gate
+    runs-on: ubuntu-latest
+    # Requires a human approval in the GitHub UI before this job runs -- see
+    # the repository's Settings > Environments > npm-publish protection rule.
+    environment: npm-publish
+    permissions:
+      contents: read
+      # The only permission publishing needs: it lets npm exchange this job's
+      # OIDC token for a short-lived registry credential. No NPM_TOKEN, no
+      # long-lived secret, nothing stored in this repository at any point.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure a Trusted-Publishing-capable npm
+        run: npm install -g npm@latest && npm --version
+
+      - name: Install and build
+        run: npm install && npm run build
+
+      - name: Publish with provenance
+        run: npm publish --provenance --access public

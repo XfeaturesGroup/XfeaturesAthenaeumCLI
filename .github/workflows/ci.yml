@@ -19,8 +19,6 @@ jobs:
         with:
           node-version: 20
 
-      # The SDK is vendored build output (see vendor/PROVENANCE.json), so this
-      # needs no cross-repository credential.
       - name: Install
         run: npm install
 
@@ -35,54 +33,24 @@ jobs:
       - name: Test
         run: npm test
 
-  vendor:
-    name: Vendored SDK is intact and declared
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Provenance is recorded
+      - name: Tarball contains no source, tests or scratch files
         run: |
-          node -e "
-            const p = require('./vendor/PROVENANCE.json');
-            if (p.generated !== true) { console.error('vendor/PROVENANCE.json must declare generated: true'); process.exit(1); }
-            if (!/^[0-9a-f]{40}\$/.test(p.commit)) { console.error('vendor/PROVENANCE.json needs the full SDK commit sha'); process.exit(1); }
-            console.log('vendored from ' + p.source + '@' + p.commit);
-          "
-      - name: The vendored build output is actually present
-        run: |
-          # A blanket dist/ rule in .gitignore once excluded exactly this, so
-          # the repository shipped an empty vendor tree and nothing resolved.
-          for pkg in athenaeum-types athenaeum-sdk; do
-            entry="vendor/$pkg/dist/index.js"
-            types="vendor/$pkg/dist/index.d.ts"
-            if [ ! -s "$entry" ] || [ ! -s "$types" ]; then
-              echo "vendor/$pkg is missing its build output ($entry / $types)."
-              echo "Run 'npm run sync:sdk' and check .gitignore is not excluding it."
-              exit 1
-            fi
-            echo "  ok  vendor/$pkg"
+          npm pack --silent
+          tarball=$(ls xfeaturesgroup-athenaeum-cli-*.tgz)
+          list=$(tar -tzf "$tarball")
+          echo "$list"
+          if echo "$list" | grep -qE '\.test\.|package/src/|\.env'; then
+            echo "Tarball contains source, tests, or an env file."
+            exit 1
+          fi
+          for required in LICENSE README.md package.json dist/cli.js; do
+            echo "$list" | grep -q "package/$required" || { echo "Missing $required."; exit 1; }
           done
+          rm -f "$tarball"
+          echo "Tarball verified clean."
 
-      - name: Vendor holds build output only, never source
-        run: |
-          # Source under vendor/ would mean the SDK had been forked here rather
-          # than consumed, which is the thing this layout exists to avoid.
-          if find vendor -name '*.ts' -not -name '*.d.ts' | grep -q .; then
-            echo "vendor/ contains TypeScript source. It must hold build output only."
-            find vendor -name '*.ts' -not -name '*.d.ts'
-            exit 1
-          fi
-          if find vendor -name '*.test.*' | grep -q .; then
-            echo "vendor/ contains test files; sync:sdk strips them."
-            exit 1
-          fi
-          echo "vendor/ holds build output only."
-
-  publishing:
-    name: npm publishing stays disabled
+  publishable-guard:
+    name: This package is deliberately publishable
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,12 +58,14 @@ jobs:
         with:
           node-version: 20
       - run: |
-          private=$(node -p "require('./package.json').private === true")
-          if [ "$private" != "true" ]; then
-            echo "package.json is not marked private -- npm publishing must stay disabled."
-            exit 1
-          fi
-          echo "Package is private."
+          node -e "
+            const pkg = require('./package.json');
+            if (pkg.private === true) { console.error('athenaeum-cli is marked private -- this package is meant to publish.'); process.exit(1); }
+            if (pkg.publishConfig?.access !== 'public') { console.error('publishConfig.access must be \"public\" for a scoped package.'); process.exit(1); }
+            if (!pkg.repository?.url?.includes('XfeaturesAthenaeumCLI')) { console.error('repository.url must point at this repository, exactly, for Trusted Publishing to match.'); process.exit(1); }
+            if (pkg.bin?.athenaeum !== './dist/cli.js') { console.error('bin.athenaeum must point at dist/cli.js.'); process.exit(1); }
+            console.log('athenaeum-cli: publishable and correctly configured.');
+          "
 
   audit:
     name: Dependency audit
@@ -105,7 +75,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --package-lock-only && npm audit --audit-level=high
+      - run: npm install && npm audit --audit-level=high
 
   secrets:
     name: Secret scan
