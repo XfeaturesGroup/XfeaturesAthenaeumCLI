@@ -1,0 +1,49 @@
+{
+  "name": "@xfeatures/athenaeum-sdk",
+  "version": "0.2.0",
+  "description": "Thin REST client for Xfeatures Athenaeum. No dependencies beyond the platform fetch().",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "LICENSE",
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/*.test.js"
+  },
+  "dependencies": {
+    "@xfeatures/athenaeum-types": "file:../athenaeum-types"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "athenaeum",
+    "xfeatures",
+    "sdk",
+    "rest-client",
+    "knowledge-base",
+    "rag",
+    "retrieval"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK.git",
+    "directory": "packages/athenaeum-sdk"
+  },
+  "homepage": "https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK/tree/main/packages/athenaeum-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK/issues"
+  }
+}

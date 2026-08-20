@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, typecheck and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The SDK is vendored build output (see vendor/PROVENANCE.json), so this
+      # needs no cross-repository credential.
+      - name: Install
+        run: npm install
+
+      - name: Typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+
+      # Tests run against dist/, so the build has to happen first -- running
+      # them against a stale dist would test code that is no longer here.
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  vendor:
+    name: Vendored SDK is intact and declared
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Provenance is recorded
+        run: |
+          node -e "
+            const p = require('./vendor/PROVENANCE.json');
+            if (p.generated !== true) { console.error('vendor/PROVENANCE.json must declare generated: true'); process.exit(1); }
+            if (!/^[0-9a-f]{40}\$/.test(p.commit)) { console.error('vendor/PROVENANCE.json needs the full SDK commit sha'); process.exit(1); }
+            console.log('vendored from ' + p.source + '@' + p.commit);
+          "
+      - name: Vendor holds build output only, never source
+        run: |
+          # Source under vendor/ would mean the SDK had been forked here rather
+          # than consumed, which is the thing this layout exists to avoid.
+          if find vendor -name '*.ts' -not -name '*.d.ts' | grep -q .; then
+            echo "vendor/ contains TypeScript source. It must hold build output only."
+            find vendor -name '*.ts' -not -name '*.d.ts'
+            exit 1
+          fi
+          if find vendor -name '*.test.*' | grep -q .; then
+            echo "vendor/ contains test files; sync:sdk strips them."
+            exit 1
+          fi
+          echo "vendor/ holds build output only."
+
+  publishing:
+    name: npm publishing stays disabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          private=$(node -p "require('./package.json').private === true")
+          if [ "$private" != "true" ]; then
+            echo "package.json is not marked private -- npm publishing must stay disabled."
+            exit 1
+          fi
+          echo "Package is private."
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --package-lock-only && npm audit --audit-level=high
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Scan full history
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1
+      - name: Scan the working tree
+        run: gitleaks detect --source . --no-git --config .gitleaks.toml --redact --verbose --exit-code 1
