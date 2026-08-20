@@ -51,6 +51,21 @@ jobs:
             if (!/^[0-9a-f]{40}\$/.test(p.commit)) { console.error('vendor/PROVENANCE.json needs the full SDK commit sha'); process.exit(1); }
             console.log('vendored from ' + p.source + '@' + p.commit);
           "
+      - name: The vendored build output is actually present
+        run: |
+          # A blanket dist/ rule in .gitignore once excluded exactly this, so
+          # the repository shipped an empty vendor tree and nothing resolved.
+          for pkg in athenaeum-types athenaeum-sdk; do
+            entry="vendor/$pkg/dist/index.js"
+            types="vendor/$pkg/dist/index.d.ts"
+            if [ ! -s "$entry" ] || [ ! -s "$types" ]; then
+              echo "vendor/$pkg is missing its build output ($entry / $types)."
+              echo "Run 'npm run sync:sdk' and check .gitignore is not excluding it."
+              exit 1
+            fi
+            echo "  ok  vendor/$pkg"
+          done
+
       - name: Vendor holds build output only, never source
         run: |
           # Source under vendor/ would mean the SDK had been forked here rather

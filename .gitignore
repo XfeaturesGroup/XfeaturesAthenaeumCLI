@@ -1,5 +1,11 @@
 node_modules/
 dist/
+# ...but the vendored SDK build output IS the artifact this repository ships
+# against, and a blanket dist/ rule silently excluded it -- the first push
+# committed an empty vendor/athenaeum-sdk/dist and CI could not resolve the
+# module.
+!vendor/**/dist/
+!vendor/**/dist/**
 *.tgz
 .DS_Store
 .env
